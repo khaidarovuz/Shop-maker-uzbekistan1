@@ -7,7 +7,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
-from database.queries import get_products, get_product, get_categories, get_cart
+from database.queries import get_products, get_product, get_categories, get_cart, add_to_cart, set_cart_qty
 from keyboards.shop_kb import ShopKeyboard
 from utils.helpers import format_price, paginate
 
@@ -49,7 +49,7 @@ async def shop_products(message: Message, bot_id: int, bot_data: dict, state: FS
         if not products:
             await message.answer("📦 Hozircha mahsulotlar yo'q.")
             return
-        await state.update_data(products=[dict(p) for p in products], page=1)
+        await state.update_data(products=products, page=1)
         await _show_product(message, products, 1, bot_id, bot_data)
 
 
@@ -67,7 +67,7 @@ async def shop_cat_cb(call: CallbackQuery, bot_id: int, bot_data: dict, state: F
         await call.answer("📦 Bu kategoriyada mahsulotlar yo'q.", show_alert=True)
         return
 
-    await state.update_data(products=[dict(p) for p in products], page=1)
+    await state.update_data(products=products, page=1)
     await call.message.delete()
     await _show_product(call.message, products, 1, bot_id, bot_data)
     await call.answer()
@@ -78,29 +78,20 @@ async def shop_prod_page_cb(call: CallbackQuery, bot_id: int, bot_data: dict, st
     """Mahsulot sahifasini o'zgartiradi."""
     page = int(call.data.split(":")[1])
     data = await state.get_data()
-    products_raw = data.get("products", [])
+    products = data.get("products", [])
 
-    if not products_raw:
-        # Qayta yuklaymiz
+    if not products:
         products = await get_products(bot_id)
-        products_raw = [dict(p) for p in products]
-        await state.update_data(products=products_raw)
-
-    class FakeRow:
-        def __init__(self, d):
-            self._d = d
-        def __getitem__(self, k):
-            return self._d[k]
-        def get(self, k, default=None):
-            return self._d.get(k, default)
-
-    products = [FakeRow(p) for p in products_raw]
+        await state.update_data(products=products)
 
     if not products:
         await call.answer("Mahsulotlar yo'q.", show_alert=True)
         return
 
-    await call.message.delete()
+    try:
+        await call.message.delete()
+    except Exception:
+        pass
     await _show_product(call.message, products, page, bot_id, bot_data)
     await call.answer()
 
@@ -111,14 +102,24 @@ async def shop_products_back_cb(call: CallbackQuery, bot_id: int, bot_data: dict
     cats = await get_categories(bot_id)
     footer = _get_footer(bot_data)
     if cats:
-        await call.message.edit_text(
-            "📂 Kategoriyani tanlang:" + footer,
-            reply_markup=ShopKeyboard.categories_inline(cats)
-        )
+        try:
+            await call.message.edit_text(
+                "📂 Kategoriyani tanlang:" + footer,
+                reply_markup=ShopKeyboard.categories_inline(cats)
+            )
+        except Exception:
+            await call.message.answer(
+                "📂 Kategoriyani tanlang:" + footer,
+                reply_markup=ShopKeyboard.categories_inline(cats)
+            )
     else:
         products = await get_products(bot_id)
         if products:
-            await call.message.delete()
+            await state.update_data(products=products)
+            try:
+                await call.message.delete()
+            except Exception:
+                pass
             await _show_product(call.message, products, 1, bot_id, bot_data)
     await call.answer()
 
@@ -173,15 +174,13 @@ async def cart_add_cb(call: CallbackQuery, bot_id: int, bot_data: dict):
         await call.answer("❌ Mahsulot mavjud emas.", show_alert=True)
         return
 
-    from database.queries import add_to_cart
     await add_to_cart(bot_id, call.from_user.id, product_id, 1)
     in_cart = await _get_cart_qty(bot_id, call.from_user.id, product_id)
+    await call.answer("✅ Savatga qo'shildi!", show_alert=False)
 
-    await call.answer(f"✅ Savatga qo'shildi!", show_alert=False)
-
-    # Klaviaturani yangilaydi
-    data_parts = call.message.caption or call.message.text or ""
     try:
+        # Sahifani topib olamiz: state dan emas, joriy mahsulot id bo'yicha
+        data_parts = call.message.caption or call.message.text or ""
         kb = ShopKeyboard.product_page(product_id, 1, 1, in_cart)
         if call.message.photo:
             await call.message.edit_caption(
@@ -201,7 +200,6 @@ async def cart_inc_cb(call: CallbackQuery, bot_id: int):
     in_cart = await _get_cart_qty(bot_id, call.from_user.id, product_id)
     new_qty = in_cart + 1
 
-    from database.queries import set_cart_qty
     await set_cart_qty(bot_id, call.from_user.id, product_id, new_qty)
     await call.answer(f"🛒 {new_qty} ta")
 
@@ -222,7 +220,6 @@ async def cart_dec_cb(call: CallbackQuery, bot_id: int):
     in_cart = await _get_cart_qty(bot_id, call.from_user.id, product_id)
     new_qty = max(0, in_cart - 1)
 
-    from database.queries import set_cart_qty
     await set_cart_qty(bot_id, call.from_user.id, product_id, new_qty)
 
     if new_qty == 0:

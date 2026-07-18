@@ -14,11 +14,16 @@ logger = logging.getLogger(__name__)
 _db_path: str = "shopmaker.db"
 
 
+def _dict_factory(cursor, row):
+    """sqlite3.Row o'rniga dict qaytaradi — .get() va boshqa dict metodlari ishlaydi."""
+    return {col[0]: row[i] for i, col in enumerate(cursor.description)}
+
+
 @asynccontextmanager
 async def get_db():
     """Ma'lumotlar bazasiga ulanishni context manager sifatida beradi."""
     async with aiosqlite.connect(_db_path) as conn:
-        conn.row_factory = aiosqlite.Row
+        conn.row_factory = _dict_factory
         await conn.execute("PRAGMA journal_mode=WAL")
         await conn.execute("PRAGMA foreign_keys=ON")
         yield conn

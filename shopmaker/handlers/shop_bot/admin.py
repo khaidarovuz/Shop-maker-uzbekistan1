@@ -28,6 +28,19 @@ def _is_admin(user_id: int, bot_data: dict) -> bool:
     return user_id == bot_data.get("owner_id")
 
 
+@router.message(F.text == "🏠 Asosiy menyu")
+async def go_main_menu(message: Message, bot_id: int, bot_data: dict, state: FSMContext):
+    """Admin paneldan asosiy menyuga qaytadi."""
+    await state.clear()
+    is_admin = _is_admin(message.from_user.id, bot_data)
+    footer = _get_footer(bot_data)
+    bot_name = bot_data.get("bot_name", "Do'konim")
+    await message.answer(
+        f"🏠 <b>{bot_name}</b> asosiy menyusi" + footer,
+        reply_markup=ShopKeyboard.main_menu(is_admin=is_admin)
+    )
+
+
 def _get_footer(bot_data: dict) -> str:
     if bot_data.get("footer_enabled", 1):
         return "\n\n<i>Powered by @ShopMakerUzBot</i>"
