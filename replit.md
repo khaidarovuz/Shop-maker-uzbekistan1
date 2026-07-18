@@ -1,45 +1,58 @@
-# [Project name]
+# ShopMakerUzBot
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Foydalanuvchilar o'z Telegram do'kon botlarini yaratishi va boshqarishi uchun professional platforma. Hamma narsa O'zbek tilida.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `cd shopmaker && python main.py` — botni ishga tushirish
+- Barcha loglar `shopmaker/logs/shopmaker.log` ga yoziladi
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Python 3.12 + aiogram 3.13.1 (Telegram Bot Framework)
+- SQLite + aiosqlite (asinxron ma'lumotlar bazasi)
+- openpyxl (Excel eksport)
+- Multi-bot arxitekturasi: har bir shop bot o'z `asyncio.Task` sida ishlaydi
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `shopmaker/main.py` — asosiy kirish nuqtasi
+- `shopmaker/config.py` — konfiguratsiya + barcha O'zbek matnlar
+- `shopmaker/database/db.py` — 13 jadval + indekslar
+- `shopmaker/database/queries.py` — barcha CRUD operatsiyalar
+- `shopmaker/utils/bot_manager.py` — ko'p bot boshqaruvi (start/stop/restart/load)
+- `shopmaker/handlers/` — asosiy bot handlerlari
+- `shopmaker/handlers/shop_bot/` — shop bot handlerlari
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- SQLite bitta fayl — deployment soddaligi uchun, tranzaksiya xavfsizligi `aiosqlite` bilan
+- Ko'p bot: har bir shop bot o'z `Bot` + `Dispatcher` + `asyncio.Task` instanceiga ega; barcha botlar bitta bazani ulashadi
+- Shop bot middleware — `bot_id`, `bot_data`, `shop_user` ni har bir handlerga inject qiladi
+- Auth middleware — foydalanuvchini auto-create/update qiladi va bloklangan userni to'xtatadi
+- Alohida router fayllari — `handlers/my_bots.py`, `handlers/plans.py`, `handlers/admin.py` va shop bot uchun `handlers/shop_bot/`
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **ShopMakerUzBot** (asosiy bot): ro'yxatdan o'tish, BotFather token ulash, shop botni boshqarish, rejalar sotib olish
+- **Shop botlar**: mustaqil ishlaydi, xaridorlar mahsulot ko'radi, savat, buyurtma, qidiruv
+- **Rejalar**: Bepul (1 bot), Comfort (5000 so'm/90 kun), Premium (10000 so'm/30 kun, 3 bot)
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Barcha matnlar O'zbek tilida
+- Main bot token: `8566204932:AAEU0MBdt2d4WcOlh5Qb6dBP8l_vzYxWmEU`
+- Admin ID: `8143880963`
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- `.env` fayl platformada bloklanadi — `BOT_TOKEN` va `ADMIN_IDS` ni Replit Secrets orqali qo'shing
+- Har yangi shop bot start bo'lganda Telegram API dan bot info so'raydi — to'g'ri token kerak
+- `shopmaker/logs/` papkasi botni ishga tushirishdan oldin yaratilishi shart (already created)
+- `check_and_expire_plans` async funksiya — har soatda `asyncio.Task` sifatida chaqiriladi
 
 ## Pointers
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Shop bot admin panel `handlers/shop_bot/admin.py` da, faqat `bot_data.owner_id` ga ruxsat beriladi
+- Savat + buyurtma flow `handlers/shop_bot/cart.py` (FSM: phone → address → note → confirm)
+- Super admin panel `handlers/admin.py` da
