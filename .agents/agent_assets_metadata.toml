@@ -6,3 +6,9 @@ id = "PLMgptt_taYdyLiXMQ310"
 uri = "file://shopmaker_bot.zip"
 type = "unspecified"
 title = "ShopMakerUzBot — barcha fayllar (61.6 KB)"
+
+[[outputs]]
+id = "3tsTOfCy-n3GJ_6On-m3Q"
+uri = "file://shopmaker_flat.zip"
+type = "unspecified"
+title = "ShopMakerUzBot — barcha fayllar (tekis, bitta papka)"
