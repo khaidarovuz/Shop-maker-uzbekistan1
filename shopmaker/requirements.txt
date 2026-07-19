@@ -8,4 +8,3 @@ pydantic-core==2.18.4
 Pillow==10.4.0
 openpyxl==3.1.5
 cryptography==43.0.3
-uvloop==0.21.0; sys_platform != "win32"
