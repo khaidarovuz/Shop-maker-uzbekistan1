@@ -2,7 +2,7 @@ services:
   - type: web
     name: shopmaker-uz-bot
     runtime: python
-    buildCommand: uv pip install --system -r shopmaker/requirements.txt
+    buildCommand: CARGO_HOME=/opt/render/project/src/.cargo uv pip install --system -r shopmaker/requirements.txt
     startCommand: cd shopmaker && python main.py
     plan: free
     envVars:
