@@ -1,10 +1,8 @@
 services:
   - type: web
     name: shopmaker-uz-bot
-    runtime: python
-    pythonVersion: "3.11.9"
-    buildCommand: pip install --only-binary=:all: pydantic-core==2.27.2 && pip install --prefer-binary -r shopmaker/requirements.txt
-    startCommand: cd shopmaker && python main.py
+    runtime: docker
+    dockerfilePath: ./Dockerfile
     plan: free
     envVars:
       - key: BOT_TOKEN
@@ -13,7 +11,7 @@ services:
         sync: false
       - key: SESSION_SECRET
         sync: false
-      - key: PYTHONDONTWRITEBYTECODE
-        value: "1"
       - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PYTHONDONTWRITEBYTECODE
         value: "1"
