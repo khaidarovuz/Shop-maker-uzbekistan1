@@ -13,6 +13,7 @@ import sys
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
+from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -123,6 +124,35 @@ async def plan_expiry_checker(bot: Bot):
         await asyncio.sleep(3600)  # Har soatda
 
 
+# ── Render uchun health-check HTTP serveri ───────────────────────────────────
+
+async def run_health_server():
+    """
+    Render web service PORT ni talab qiladi.
+    Oddiy aiohttp server /health endpoint bilan ishga tushadi.
+    """
+    async def health(request):
+        return web.Response(text="OK", status=200)
+
+    async def root(request):
+        return web.Response(text="ShopMakerUzBot ishlayapti ✅", status=200)
+
+    app = web.Application()
+    app.router.add_get("/", root)
+    app.router.add_get("/health", health)
+
+    port = int(os.environ.get("PORT", 8080))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logging.getLogger("main").info("🌐 Health server port=%d da ishlamoqda", port)
+
+    # Abadiy kutadi (bot polling bilan parallel ishlaydi)
+    while True:
+        await asyncio.sleep(3600)
+
+
 # ── Asosiy funksiya ──────────────────────────────────────────────────────────
 
 async def main():
@@ -172,24 +202,29 @@ async def main():
         except Exception:
             pass
 
-    logger.info("✅ ShopMakerUzBot tayyor! Polling boshlanmoqda...")
+    logger.info("✅ ShopMakerUzBot tayyor! Polling va health server boshlanmoqda...")
 
-    # Polling boshlaydi
-    try:
-        await dp.start_polling(
-            bot,
-            allowed_updates=dp.resolve_used_update_types(),
-            handle_signals=True,
-        )
-    finally:
-        logger.info("⏹ ShopMakerUzBot to'xtatilmoqda...")
-        # Barcha shop botlarini to'xtatadi
-        from utils.bot_manager import _active_bots, stop_shop_bot
-        bot_ids = list(_active_bots.keys())
-        for bid in bot_ids:
-            await stop_shop_bot(bid)
-        await bot.session.close()
-        logger.info("✅ ShopMakerUzBot to'xtatildi.")
+    async def polling_task():
+        try:
+            await dp.start_polling(
+                bot,
+                allowed_updates=dp.resolve_used_update_types(),
+                handle_signals=False,
+            )
+        finally:
+            logger.info("⏹ ShopMakerUzBot to'xtatilmoqda...")
+            from utils.bot_manager import _active_bots, stop_shop_bot
+            bot_ids = list(_active_bots.keys())
+            for bid in bot_ids:
+                await stop_shop_bot(bid)
+            await bot.session.close()
+            logger.info("✅ ShopMakerUzBot to'xtatildi.")
+
+    # Health server va bot polling — ikkalasi parallel ishlaydi
+    await asyncio.gather(
+        polling_task(),
+        run_health_server(),
+    )
 
 
 if __name__ == "__main__":
