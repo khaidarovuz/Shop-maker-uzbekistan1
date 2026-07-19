@@ -220,11 +220,14 @@ async def main():
             await bot.session.close()
             logger.info("✅ ShopMakerUzBot to'xtatildi.")
 
-    # Health server va bot polling — ikkalasi parallel ishlaydi
-    await asyncio.gather(
-        polling_task(),
-        run_health_server(),
-    )
+    # Health server faqat Render'da kerak (PORT env bor va RENDER=true)
+    if os.environ.get("RENDER"):
+        await asyncio.gather(
+            polling_task(),
+            run_health_server(),
+        )
+    else:
+        await polling_task()
 
 
 if __name__ == "__main__":
