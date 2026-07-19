@@ -2,7 +2,8 @@ services:
   - type: web
     name: shopmaker-uz-bot
     runtime: python
-    buildCommand: pip install --prefer-binary -r shopmaker/requirements.txt
+    pythonVersion: "3.11.9"
+    buildCommand: pip install --only-binary=:all: pydantic-core==2.27.2 && pip install --prefer-binary -r shopmaker/requirements.txt
     startCommand: cd shopmaker && python main.py
     plan: free
     envVars:
